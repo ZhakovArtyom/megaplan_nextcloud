@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "megaplan-nextcloud"
+version = "0.1.0"
+description = ""
+authors = ["ZhakovArtyom <127793560+ZhakovArtyom@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.0"
+uvicorn = "^0.31.0"
+pydantic-settings = "^2.5.2"
+requests = "^2.32.3"
+aiojobs = "^1.3.0"
+aioschedule = "^0.5.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
