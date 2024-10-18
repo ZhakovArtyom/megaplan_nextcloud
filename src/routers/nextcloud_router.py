@@ -65,6 +65,7 @@ async def delete_task_from_journal(task_id, not_found_share_id=None):
 async def create_folder_and_share_link(request: Request):
     # Получаем данные запроса
     task_data = await request.json()
+    logging.info(f"Данные задачи: {task_data}")
 
     # Проверяем тип события
     event_type = task_data.get("event")
@@ -163,16 +164,16 @@ async def create_public_link(task_id, folder_path):
             "Authorization": f"Bearer {settings.MEGAPLAN_API_KEY}",
             "Content-Type": "application/json"
         }
-        update_response = requests.post(update_task_url, headers=update_headers, json=task_data)
-
-        if update_response.status_code == 200:
-            logging.info(f"Ссылка успешно добавлена в кастомное поле задачи {task_id}")
-        elif update_response.status_code == 404:
-            logging.warning(f"Задача с ID {task_id} не найдена. Удаление задачи из журнала.")
-            await delete_task_from_journal(task_id, not_found_share_id=share_id)
-        else:
-            logging.error(
-                f"Ошибка при добавлении ссылки в кастомное поле задачи {task_id}: {update_response.status_code}")
+        # update_response = requests.post(update_task_url, headers=update_headers, json=task_data)
+        #
+        # if update_response.status_code == 200:
+        #     logging.info(f"Ссылка успешно добавлена в кастомное поле задачи {task_id}")
+        # elif update_response.status_code == 404:
+        #     logging.warning(f"Задача с ID {task_id} не найдена. Удаление задачи из журнала.")
+        #     await delete_task_from_journal(task_id, not_found_share_id=share_id)
+        # else:
+        #     logging.error(
+        #         f"Ошибка при добавлении ссылки в кастомное поле задачи {task_id}: {update_response.status_code}")
 
         return share_id, share_url
     else:
