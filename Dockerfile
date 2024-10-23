@@ -22,8 +22,8 @@ VOLUME ["/app/logs"]
 # Копирование конфигурации Nginx
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Открытие портов 80 и 443 для HTTP и HTTPS
-EXPOSE 80 443
+# Открытие порта 8000 для приложения
+EXPOSE 8000
 
 # Команда для запуска Nginx и приложения
 CMD ["sh", "-c", "nginx && uvicorn main:app --host 0.0.0.0 --port 8000"]
