@@ -20,4 +20,4 @@ VOLUME ["/app/logs"]
 EXPOSE 8000
 
 # Команда для запуска приложения
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--ssl-keyfile", "/usr/lib/ssl/private/key.pem", "--ssl-certfile", "/usr/lib/ssl/cert.pem"]
