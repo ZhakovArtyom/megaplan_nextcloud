@@ -70,6 +70,21 @@ async def create_folder_and_share_link(request: Request):
     # Проверяем тип события
     event_type = task_data.get("event")
     if event_type == "on_after_create":
+        # Создаем асинхронную задачу для обработки создания задачи
+        asyncio.create_task(process_task_creation(task_data))
+        return JSONResponse(status_code=200, content={"message": "Задача принята в обработку"})
+
+    elif event_type == "on_after_drop":
+        asyncio.create_task(process_task_deletion(task_data))
+        return JSONResponse(status_code=200, content={"message": "Удаление задачи принято в обработку"})
+
+    else:
+        logging.info(f"Игнорируем событие: {event_type}")
+        return JSONResponse(status_code=400, content={"message": "Событие не поддерживается"})
+
+
+async def process_task_creation(task_data):
+    try:
         # Логика обработки создания задачи
         task_id = task_data["data"]["id"]
         task_name = task_data["data"]["name"]
@@ -83,7 +98,7 @@ async def create_folder_and_share_link(request: Request):
 
         if task_id in tasks_journal:
             logging.info(f"Задача с ID {task_id} уже существует в журнале.")
-            return JSONResponse(status_code=200, content={"message": "Задача уже существует в журнале"})
+            return
 
         task_info = {
             "task_id": task_id,
@@ -104,7 +119,6 @@ async def create_folder_and_share_link(request: Request):
             logging.info(f"Папка уже существует: {new_folder_path}")
         else:
             logging.error(f"Ошибка при создании папки: {response.status_code}")
-            return JSONResponse(status_code=500, content={"message": "Ошибка при создании папки"})
 
         share_id, share_url = await create_public_link(task_id, new_folder_path)
         if share_id and share_url:
@@ -116,20 +130,20 @@ async def create_folder_and_share_link(request: Request):
 
             await save_tasks_journal(tasks_journal)
 
-        return JSONResponse(status_code=200, content={"message": "Задача успешно создана"})
+    except Exception as e:
+        logging.exception(f"Ошибка при обработке создания задачи: {str(e)}")
 
-    elif event_type == "on_after_drop":
+
+async def process_task_deletion(task_data):
+    try:
         # Логика обработки удаления задачи
         task_id = task_data["data"]["id"]
         logging.info(f"Удаление задачи с ID: {task_id}")
 
         await delete_task_from_journal(task_id)
 
-        return JSONResponse(status_code=200, content={"message": f"Задача с ID {task_id} удалена."})
-
-    else:
-        logging.info(f"Игнорируем событие: {event_type}")
-        return JSONResponse(status_code=400, content={"message": "Событие не поддерживается"})
+    except Exception as e:
+        logging.exception(f"Ошибка при обработке удаления задачи: {str(e)}")
 
 
 async def create_public_link(task_id, folder_path):
@@ -238,7 +252,6 @@ async def run_recovery():
     logging.info(f"Количество задач для обновления: {len(recent_tasks)}")
     # logging.info(f"Задачи: {recent_tasks}")
 
-
     for i, task_info in enumerate(recent_tasks):
         delay = i * 4  # Вычисляем задержку для каждой задачи
         asyncio.create_task(update_task(task_info, delay))
@@ -256,7 +269,6 @@ async def startup_recovery():
         try:
             aioschedule.every().day.at("23:00").do(run_recovery)  # время по UTC
             # aioschedule.every(5).minutes.do(run_recovery)
-
 
             while True:
                 # Запускаем все отложенные задачи
