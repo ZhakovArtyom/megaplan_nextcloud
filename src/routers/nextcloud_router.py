@@ -19,7 +19,7 @@ file_lock = asyncio.Lock()
 periodic_recovery_running = False  # Глобальный флаг для контроля запуска
 
 
-@router.get("/test")
+@router.get("/crm/test")
 async def test_endpoint():
     logging.info(f"Received test request")
     return JSONResponse(status_code=200, content={"message": "Test request successful!"})
@@ -61,7 +61,7 @@ async def delete_task_from_journal(task_id, not_found_share_id=None):
         logging.warning(f"Задача с ID {task_id} не найдена в журнале.")
 
 
-@router.post("/tasks")
+@router.post("/crm/tasks")
 async def create_folder_and_share_link(request: Request):
     # Получаем данные запроса
     task_data = await request.json()
