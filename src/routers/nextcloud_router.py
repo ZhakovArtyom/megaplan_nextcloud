@@ -64,8 +64,11 @@ async def delete_task_from_journal(task_id, not_found_share_id=None):
 @router.post("/crm/tasks")
 async def create_folder_and_share_link(request: Request):
     # Получаем данные запроса
-    task_data = await request.json()
-    logging.info(f"Данные задачи: {task_data}")
+    try:
+        task_data = await request.json()
+        logging.info(f"Данные задачи: {task_data}")
+    except Exception:
+        return JSONResponse(status_code=200, content={"message": "Запрос без тела JSON"})
 
     # Проверяем тип события
     event_type = task_data.get("event")
@@ -80,7 +83,7 @@ async def create_folder_and_share_link(request: Request):
 
     else:
         logging.info(f"Игнорируем событие: {event_type}")
-        return JSONResponse(status_code=400, content={"message": "Событие не поддерживается"})
+        return JSONResponse(status_code=200, content={"message": "Событие не поддерживается"})
 
 
 async def process_task_creation(task_data):
@@ -172,22 +175,22 @@ async def create_public_link(task_id, folder_path):
         # Загрузка ссылки в кастомное поле задачи
         update_task_url = f"{settings.MEGAPLAN_API_URL}/api/v3/task/{task_id}"
         task_data = {
-            "subject": share_url
+            "Category130CustomFieldKatalog": share_url
         }
         update_headers = {
             "Authorization": f"Bearer {settings.MEGAPLAN_API_KEY}",
             "Content-Type": "application/json"
         }
-        # update_response = requests.post(update_task_url, headers=update_headers, json=task_data)
-        #
-        # if update_response.status_code == 200:
-        #     logging.info(f"Ссылка успешно добавлена в кастомное поле задачи {task_id}")
-        # elif update_response.status_code == 404:
-        #     logging.warning(f"Задача с ID {task_id} не найдена. Удаление задачи из журнала.")
-        #     await delete_task_from_journal(task_id, not_found_share_id=share_id)
-        # else:
-        #     logging.error(
-        #         f"Ошибка при добавлении ссылки в кастомное поле задачи {task_id}: {update_response.status_code}")
+        update_response = requests.post(update_task_url, headers=update_headers, json=task_data)
+
+        if update_response.status_code == 200:
+            logging.info(f"Ссылка успешно добавлена в кастомное поле задачи {task_id}")
+        elif update_response.status_code == 404:
+            logging.warning(f"Задача с ID {task_id} не найдена. Удаление задачи из журнала.")
+            await delete_task_from_journal(task_id, not_found_share_id=share_id)
+        else:
+            logging.error(
+                f"Ошибка при добавлении ссылки в кастомное поле задачи {task_id}: {update_response.status_code}")
 
         return share_id, share_url
     else:
