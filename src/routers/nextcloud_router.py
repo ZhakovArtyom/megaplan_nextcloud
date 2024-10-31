@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import xml.etree.ElementTree as ET
+from datetime import datetime, timezone, timedelta
 
 import aioschedule
 import requests
@@ -90,10 +91,11 @@ async def process_task_creation(task_data):
     try:
         # Логика обработки создания задачи
         task_id = task_data["data"]["id"]
+        task_humannumber = task_data["data"]["humanNumber"]
         task_name = task_data["data"]["name"]
         logging.info(f"Получен task ID: {task_id}, название: {task_name}")
 
-        new_folder_name = f"{task_name}_{task_id}"
+        new_folder_name = f"{task_humannumber}. {task_name}"
         catalog_folder = "/КАТАЛОГ"
         new_folder_path = f"{catalog_folder}/{new_folder_name}"
 
@@ -172,11 +174,19 @@ async def create_public_link(task_id, folder_path):
         share_url = xml_response.find(".//data/url").text
         logging.info(f"Общий доступ к папке предоставлен. URL общего доступа: {share_url}")
 
+        current_date_utc = datetime.now(timezone.utc)
+        msk_offset = timedelta(hours=3)
+        current_date_msk = current_date_utc + msk_offset
+        formatted_date_msk = current_date_msk.strftime("%d.%m.%Y")
+
+        link_text = f"Ссылка на каталог от {formatted_date_msk}"
+
         # Загрузка ссылки в кастомное поле задачи
         update_task_url = f"{settings.MEGAPLAN_API_URL}/api/v3/task/{task_id}"
         task_data = {
-            "Category130CustomFieldKatalog": share_url
+            "Category130CustomFieldKatalog": f'<a href="{share_url}" target="_blank">{link_text}</a>'
         }
+
         update_headers = {
             "Authorization": f"Bearer {settings.MEGAPLAN_API_KEY}",
             "Content-Type": "application/json"
