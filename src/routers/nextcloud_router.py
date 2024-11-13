@@ -89,10 +89,13 @@ async def create_folder_and_share_link(request: Request):
 
 async def process_task_creation(task_data):
     try:
-        # Логика обработки создания задачи
+        # Логика обработки создания/переименования задачи
         task_id = task_data["data"]["id"]
         task_humannumber = task_data["data"]["humanNumber"]
         task_name = task_data["data"]["name"]
+        is_rename = task_data["data"].get("rename", False)
+        is_create_again = task_data["data"].get("create_again", False)
+
         logging.info(f"Получен task ID: {task_id}, название: {task_name}")
 
         new_folder_name = f"{task_humannumber}. {task_name}"
@@ -101,42 +104,65 @@ async def process_task_creation(task_data):
 
         tasks_journal = await load_tasks_journal()
 
-        if task_id in tasks_journal:
-            logging.info(f"Задача с ID {task_id} уже существует в журнале.")
-            return
-
-        task_info = {
-            "task_id": task_id,
-            "folder_path": new_folder_path,
-            "share_id": None  # пока нет ссылки на папку
-        }
-        tasks_journal[task_id] = task_info
-
-        await save_tasks_journal(tasks_journal)
-
-        create_folder_url = f"{settings.NEXTCLOUD_URL}/remote.php/dav/files/{settings.NEXTCLOUD_USERNAME}{new_folder_path}"
-        response = requests.request("MKCOL", create_folder_url,
-                                    auth=(settings.NEXTCLOUD_USERNAME, settings.NEXTCLOUD_PASSWORD))
-
-        if response.status_code == 201:
-            logging.info(f"Папка успешно создана: {new_folder_path}")
-        elif response.status_code == 405:
-            logging.info(f"Папка уже существует: {new_folder_path}")
+        if is_rename and task_id in tasks_journal:
+            old_folder_path = tasks_journal[task_id]["folder_path"]
+            await rename_folder_in_nextcloud(old_folder_path, new_folder_path)
+            tasks_journal[task_id]["folder_path"] = new_folder_path
+            await save_tasks_journal(tasks_journal)
         else:
-            logging.error(f"Ошибка при создании папки: {response.status_code}")
+            if not is_create_again and task_id in tasks_journal:
+                logging.info(f"Задача с ID {task_id} уже существует в журнале.")
+                return
+            elif is_create_again and task_id in tasks_journal:
+                # Если is_create_again, сначала отзываем старую ссылку
+                old_share_id = tasks_journal[task_id]["share_id"]
+                if old_share_id:
+                    await revoke_public_link(old_share_id)
+                    logging.info(f"Старая ссылка для задачи {task_id} отозвана.")
+
+            task_info = {
+                "task_id": task_id,
+                "folder_path": new_folder_path,
+                "share_id": None  # пока нет ссылки на папку
+            }
+            tasks_journal[task_id] = task_info
+
+            await save_tasks_journal(tasks_journal)
+
+            create_folder_url = f"{settings.NEXTCLOUD_URL}/remote.php/dav/files/{settings.NEXTCLOUD_USERNAME}{new_folder_path}"
+            response = requests.request("MKCOL", create_folder_url,
+                                        auth=(settings.NEXTCLOUD_USERNAME, settings.NEXTCLOUD_PASSWORD))
+
+            if response.status_code == 201:
+                logging.info(f"Папка успешно создана: {new_folder_path}")
+            elif response.status_code == 405:
+                logging.info(f"Папка уже существует: {new_folder_path}")
+            else:
+                logging.error(f"Ошибка при создании папки: {response.status_code, response.text}")
 
         share_id, share_url = await create_public_link(task_id, new_folder_path)
         if share_id and share_url:
             logging.info(f"Публичная ссылка для задачи {task_id}: {share_url}")
-            task_info["share_id"] = share_id
-
-            tasks_journal = await load_tasks_journal()
             tasks_journal[task_id]["share_id"] = share_id
-
             await save_tasks_journal(tasks_journal)
 
     except Exception as e:
-        logging.exception(f"Ошибка при обработке создания задачи: {str(e)}")
+        logging.exception(f"Ошибка при обработке создания/переименования задачи: {str(e)}")
+
+
+async def rename_folder_in_nextcloud(old_folder_path, new_folder_path):
+    move_url = f"{settings.NEXTCLOUD_URL}/remote.php/dav/files/{settings.NEXTCLOUD_USERNAME}/{old_folder_path}"
+    destination_url = f"{settings.NEXTCLOUD_URL}/remote.php/dav/files/{settings.NEXTCLOUD_USERNAME}/{new_folder_path}"
+    headers = {
+        "Destination": destination_url.encode('utf-8')
+    }
+    response = requests.request("MOVE", move_url, auth=(settings.NEXTCLOUD_USERNAME, settings.NEXTCLOUD_PASSWORD),
+                                headers=headers)
+
+    if response.status_code == 201:
+        logging.info(f"Папка успешно переименована: {old_folder_path} -> {new_folder_path}")
+    else:
+        logging.error(f"Ошибка при переименовании папки: {response.status_code, response.text}")
 
 
 async def process_task_deletion(task_data):
