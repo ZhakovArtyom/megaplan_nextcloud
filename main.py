@@ -13,7 +13,7 @@ from src.routers.nextcloud_router import router as nextcloud_router
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-handler = RotatingFileHandler('/app/logs/project.log', maxBytes=10 * 1024 * 1024, backupCount=5)
+handler = RotatingFileHandler('/app/logs/project.log', maxBytes=20 * 1024 * 1024, backupCount=5)
 handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 
 logger.addHandler(handler)

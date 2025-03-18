@@ -67,7 +67,7 @@ async def create_folder_and_share_link(request: Request):
     # Получаем данные запроса
     try:
         task_data = await request.json()
-        logging.info(f"Данные задачи: {task_data}")
+        logging.info(f"Получен вебхук задачи")
     except Exception:
         return JSONResponse(status_code=200, content={"message": "Запрос без тела JSON"})
 
