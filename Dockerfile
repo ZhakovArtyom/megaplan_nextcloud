@@ -2,12 +2,11 @@ FROM python:3.12-alpine
 
 WORKDIR /app
 
-RUN pip install poetry
+RUN pip install poetry==1.8.2
+RUN poetry config virtualenvs.create false
 
 COPY pyproject.toml poetry.lock ./
-
-RUN poetry config virtualenvs.create false && \
-    poetry install --no-dev --no-interaction --no-ansi
+RUN poetry install --no-interaction --no-ansi --only main
 
 COPY . .
 
