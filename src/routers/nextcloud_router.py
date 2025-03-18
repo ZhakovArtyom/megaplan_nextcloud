@@ -131,7 +131,7 @@ async def process_task_creation(task_data):
 
             create_folder_url = f"{settings.NEXTCLOUD_URL}/remote.php/dav/files/{settings.NEXTCLOUD_USERNAME}{new_folder_path}"
             response = requests.request("MKCOL", create_folder_url,
-                                        auth=(settings.NEXTCLOUD_USERNAME, settings.NEXTCLOUD_PASSWORD))
+                                        auth=(settings.NEXTCLOUD_USERNAME, settings.NEXTCLOUD_PASSWORD), timeout=120)
 
             if response.status_code == 201:
                 logging.info(f"Папка успешно создана: {new_folder_path}")
@@ -157,7 +157,7 @@ async def rename_folder_in_nextcloud(old_folder_path, new_folder_path):
         "Destination": destination_url.encode('utf-8')
     }
     response = requests.request("MOVE", move_url, auth=(settings.NEXTCLOUD_USERNAME, settings.NEXTCLOUD_PASSWORD),
-                                headers=headers)
+                                headers=headers, timeout=120)
 
     if response.status_code == 201:
         logging.info(f"Папка успешно переименована: {old_folder_path} -> {new_folder_path}")
@@ -192,7 +192,7 @@ async def create_public_link(task_id, folder_path):
     }
 
     response = requests.post(share_url, auth=(settings.NEXTCLOUD_USERNAME, settings.NEXTCLOUD_PASSWORD),
-                             headers=headers, data=data)
+                             headers=headers, data=data, timeout=120)
 
     if response.status_code == 200:
         xml_response = ET.fromstring(response.content)
@@ -217,7 +217,7 @@ async def create_public_link(task_id, folder_path):
             "Authorization": f"Bearer {settings.MEGAPLAN_API_KEY}",
             "Content-Type": "application/json"
         }
-        update_response = requests.post(update_task_url, headers=update_headers, json=task_data)
+        update_response = requests.post(update_task_url, headers=update_headers, json=task_data, timeout=120)
 
         if update_response.status_code == 200:
             logging.info(f"Ссылка успешно добавлена в кастомное поле задачи {task_id}")
@@ -243,7 +243,7 @@ async def revoke_public_link(share_id):
         "requesttoken": settings.NEXTCLOUD_CSRF_TOKEN
     }
     response = requests.delete(delete_share_url, auth=(settings.NEXTCLOUD_USERNAME, settings.NEXTCLOUD_PASSWORD),
-                               headers=headers)
+                               headers=headers, timeout=120)
 
     if response.status_code == 200:
         logging.info(f"Общий доступ отозван.")
